@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # --- Database Connection ---
-DATABASE_URL_T = os.environ.get(
+DATABASE_URL_T = st.secrets.get(
     "DATABASE_URL_T",
     "postgresql://pgadmin:Joan%40Div%402026@ttab-alddiv-common.postgres.database.azure.com:5432/TTAB-DB-Common?sslmode=require"
 )
