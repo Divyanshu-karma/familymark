@@ -10,7 +10,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- Database Connection ---
 
 
 # --- Normalization (ported from enforcement_repository.py) ---
@@ -103,7 +102,7 @@ def build_result(petitioner_norm, family_mark_raw, applicant_mark):
     return {"petitioner_norm": petitioner_norm, "family_exists": True,
             "dominant_terms": dominant_terms, "family_strength": strength,
             "mark_count": mark_count, "applicant_mark_overlap": overlap}
-API_URL = "https://your-backend-api.com/lookup"  # change later
+API_URL = st.secrets["API_URL"]
 
 def lookup_single(petitioner_name, applicant_mark):
     try:
