@@ -13,15 +13,11 @@ st.set_page_config(
 )
 
 # --- Database Connection ---
-DATABASE_URL_T = st.secrets.get(
-    "DATABASE_URL_T",
-    "postgresql://pgadmin:Joan%40Div%402026@ttab-alddiv-common.postgres.database.azure.com:5432/TTAB-DB-Common?sslmode=require"
-)
+DATABASE_URL_T = st.secrets["DATABASE_URL_T"]
 
 @st.cache_resource
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL_T)
-
 def get_cursor():
     conn = get_db_connection()
     try:
