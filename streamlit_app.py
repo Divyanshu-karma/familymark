@@ -1,8 +1,6 @@
 import streamlit as st
-import psycopg2
-from psycopg2.extras import RealDictCursor
 import re
-import os
+import requests
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -13,19 +11,7 @@ st.set_page_config(
 )
 
 # --- Database Connection ---
-DATABASE_URL_T = st.secrets["DATABASE_URL_T"]
 
-@st.cache_resource
-def get_db_connection():
-    return psycopg2.connect(DATABASE_URL_T)
-def get_cursor():
-    conn = get_db_connection()
-    try:
-        conn.cursor().execute("SELECT 1")
-    except Exception:
-        st.cache_resource.clear()
-        conn = get_db_connection()
-    return conn.cursor(cursor_factory=RealDictCursor)
 
 # --- Normalization (ported from enforcement_repository.py) ---
 LEGAL_SUFFIX_TOKENS = {
@@ -117,48 +103,23 @@ def build_result(petitioner_norm, family_mark_raw, applicant_mark):
     return {"petitioner_norm": petitioner_norm, "family_exists": True,
             "dominant_terms": dominant_terms, "family_strength": strength,
             "mark_count": mark_count, "applicant_mark_overlap": overlap}
+API_URL = "https://your-backend-api.com/lookup"  # change later
 
 def lookup_single(petitioner_name, applicant_mark):
-    norm_stripped = normalize_owner_name(petitioner_name)
-    norm_full = normalize_owner_name_with_suffix(petitioner_name)
-    norms = list(dict.fromkeys([n for n in [norm_stripped, norm_full] if n]))
-    if not norms:
+    try:
+        response = requests.post(
+            API_URL,
+            json={
+                "petitioner_name": petitioner_name,
+                "applicant_mark": applicant_mark
+            },
+            timeout=5
+        )
+        response.raise_for_status()
+        return response.json().get("results", [])
+    except Exception as e:
+        st.error(f"API Error: {str(e)}")
         return []
-
-    cur = get_cursor()
-    cur.execute("SELECT petitioner_norm, family_mark FROM familymarkT WHERE petitioner_norm IN %s",
-                (tuple(norms),))
-    rows = {r['petitioner_norm']: r['family_mark'] for r in cur.fetchall()}
-
-    results = []
-    for norm in norms:
-        fm = rows.get(norm)
-        if fm is not None:
-            results.append(build_result(norm, fm, applicant_mark))
-        else:
-            results.append({"petitioner_norm": norm, "family_exists": False,
-                            "dominant_terms": [], "family_strength": "weak",
-                            "mark_count": 0, "applicant_mark_overlap": []})
-
-    found = [r for r in results if r["family_exists"]]
-    if found and len(found) < len(results):
-        results = found
-
-    # Fallback ILIKE
-    if not found and norm_stripped:
-        words = norm_stripped.split()
-        if len(words) >= 2:
-            for pattern in generate_fallback_slices(words):
-                cur.execute(
-                    "SELECT petitioner_norm, family_mark FROM familymarkT "
-                    "WHERE petitioner_norm ILIKE %s AND family_mark IS NOT NULL AND family_mark != '' "
-                    "ORDER BY petitioner_norm ASC LIMIT 1",
-                    (f"%{pattern}%",))
-                row = cur.fetchone()
-                if row and row['family_mark']:
-                    results = [build_result(row['petitioner_norm'], row['family_mark'], applicant_mark)]
-                    break
-    return results
 
 # --- Custom CSS ---
 st.markdown("""
