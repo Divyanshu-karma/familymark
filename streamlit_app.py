@@ -112,7 +112,7 @@ def lookup_single(petitioner_name, applicant_mark):
                 "petitioner_name": petitioner_name,
                 "applicant_mark": applicant_mark
             },
-            timeout=5
+            timeout=10
         )
         response.raise_for_status()
         return response.json().get("results", [])
